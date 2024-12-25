@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import yaml
 import json
+import pandas as pd
 from urllib.parse import urljoin, urlparse
 from analyzer import TextAnalyzer
 
@@ -76,6 +77,20 @@ class WebScraper:
     def save_results(self):
         with open('results.json', 'w') as file:
             json.dump(self.results, file, indent=4)
+        self.save_results_stata()
+
+    def save_results_stata(self):
+        data = []
+        for url, result in self.results.items():
+            row = {
+                "url": url,
+                **result["country_counts"],
+                **result["offshore_mentions"],
+                "countries_found": ", ".join(result["countries_found"])
+            }
+            data.append(row)
+        df = pd.DataFrame(data)
+        df.to_stata('results.dta', write_index=False)
 
 if __name__ == "__main__":
     scraper = WebScraper('config.yaml')

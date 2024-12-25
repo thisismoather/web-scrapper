@@ -1,0 +1,134 @@
+websites:
+  - https://www.abbott.com/
+
+tax_groups:
+  low_tax:
+    - Andorra
+    - Andorran
+    - Anguilla
+    - Anguillan
+    - Antigua and Barbuda
+    - Antiguan
+    - Barbudan
+    - Aruba
+    - Aruban
+    - The Bahamas
+    - Bahamian
+    - Bahamas
+    - Bahrain
+    - Bahraini
+    - Barbados
+    - Barbadian
+    - Belize
+    - Belizean
+    - Bermuda
+    - Bermudian
+    - Bermudan
+    - Cayman Islands
+    - Caymanian
+    - Costa Rica
+    - Costa Rican
+    - Cyprus
+    - Cypriot
+    - Dominica
+    - Dominican
+    - Gibraltar
+    - Gibraltar
+    - Grenada
+    - Grenadian
+    - Hong Kong
+    - Hong Kong
+    - Cantonese
+    - Ireland
+    - Irish
+    - Jordan
+    - Jordanian
+    - Lebanon
+    - Lebanese
+    - Liberia
+    - Liberian
+    - Liechtenstein
+    - Liechtensteiner
+    - Luxembourg
+    - Luxembourg
+    - Luxembourgish
+    - Macau
+    - Macanese
+    - Maldives
+    - Maldivian
+    - Malta
+    - Maltese
+    - Marshall Islands
+    - Marshallese
+    - Mauritius
+    - Mauritian
+    - Monaco
+    - Monégasque
+    - Monacan
+    - Nauru
+    - Nauruan
+    - Netherlands
+    - Dutch
+    - Panama
+    - Panamanian
+    - Puerto Rico
+    - Puerto Rican
+    - Saint Kitts and Nevis
+    - Kittitian
+    - Nevisian
+    - Saint Lucia
+    - Saint Lucian
+    - Saint Vincent and the Grenadines
+    - Saint Vincentian
+    - Vincentian
+    - Samoa
+    - Samoan
+    - San Marino
+    - Sammarinese
+    - Seychelles
+    - Seychellois
+    - Singapore
+    - Singaporean
+    - Switzerland
+    - Swiss
+    - Tonga
+    - Tongan
+    - Vanuatu
+    - Ni-Vanuatu
+    - Vanuatuan
+    - British Virgin Islands
+    - British Virgin Island
+  medium_tax:
+    - Cyprus
+    - Cypriot
+    - Hong Kong
+    - Hong Kong
+    - Cantonese
+    - Ireland
+    - Irish
+    - Lebanon
+    - Lebanese
+    - Luxembourg
+    - Luxembourg
+    - Luxembourgish
+    - Malta
+    - Maltese
+    - Netherlands
+    - Dutch
+    - Panama
+    - Panamanian
+    - Puerto Rico
+    - Puerto Rican
+    - Singapore
+    - Singaporean
+    - Switzerland
+    - Swiss
+  high_tax:
+    - Germany
+    - France
+
+offshore_words:
+  - offshore
+  - tax haven
+  - shell company
+  - secrecy jurisdiction

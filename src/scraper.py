@@ -3,16 +3,32 @@ from bs4 import BeautifulSoup
 import yaml
 import json
 import pandas as pd
+import argparse
 from urllib.parse import urljoin, urlparse
 from analyzer import TextAnalyzer
 
 class WebScraper:
-    def __init__(self, config_path):
+    def __init__(self, config_path='config.yaml', websites_path='websites.dta', num_sites=None):
         with open(config_path, 'r') as file:
             self.config = yaml.safe_load(file)
         self.analyzer = TextAnalyzer(self.config)
         self.visited_urls = set()
         self.results = {}
+        self.websites = self.load_websites(websites_path, num_sites)
+
+    def load_websites(self, websites_path, num_sites):
+        df = pd.read_stata(websites_path)
+        print("Columns in the Stata file:", df.columns)  # Debugging line
+        urls = [self.ensure_scheme(url) for url in df['weburl'].tolist()]
+        if num_sites == "all":
+            return urls
+        else:
+            return urls[:int(num_sites)]
+
+    def ensure_scheme(self, url):
+        if not urlparse(url).scheme:
+            return 'https://' + url
+        return url
 
     def fetch_website_content(self, url):
         response = requests.get(url)
@@ -24,7 +40,7 @@ class WebScraper:
             return None
 
     def scrape(self):
-        for website in self.config['websites']:
+        for website in self.websites:
             self.scrape_website(website)
         self.save_results()
 
@@ -93,5 +109,9 @@ class WebScraper:
         df.to_stata('results.dta', write_index=False)
 
 if __name__ == "__main__":
-    scraper = WebScraper('config.yaml')
+    parser = argparse.ArgumentParser(description='Web Scraper for Company Website Analysis')
+    parser.add_argument('num_sites', type=str, help='Number of sites to scrape or "all" to scrape all sites')
+    args = parser.parse_args()
+
+    scraper = WebScraper(num_sites=args.num_sites)
     scraper.scrape()

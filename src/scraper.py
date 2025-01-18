@@ -5,16 +5,21 @@ import json
 import pandas as pd
 import argparse
 from urllib.parse import urljoin, urlparse
+from datetime import datetime, timedelta
+from time import sleep
 from analyzer import TextAnalyzer
 
 class WebScraper:
-    def __init__(self, config_path='config.yaml', websites_path='websites.dta', num_sites=None):
+    def __init__(self, config_path='config.yaml', websites_path='websites.dta', num_sites=None, num_years=1, delay=1):
         with open(config_path, 'r') as file:
             self.config = yaml.safe_load(file)
         self.analyzer = TextAnalyzer(self.config)
         self.visited_urls = set()
         self.results = {}
         self.websites = self.load_websites(websites_path, num_sites)
+        self.num_years = num_years
+        self.delay = delay
+        self.failed_requests_log = 'failed_requests.log'
 
     def load_websites(self, websites_path, num_sites):
         df = pd.read_stata(websites_path)
@@ -31,13 +36,44 @@ class WebScraper:
         return url
 
     def fetch_website_content(self, url):
-        response = requests.get(url)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=365 * self.num_years)
+        snapshots = self.get_wayback_snapshots(url, start_date, end_date)
+        contents = []
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+        print(f"____________________ {url}")
+        print(f"Found {len(snapshots)} snapshots for {url}")
+        for snapshot in snapshots:
+            print(f"Retrieving {snapshot}")
+            try:
+                response = requests.get(snapshot, headers=headers, timeout=60)
+                if response.status_code == 200:
+                    print(f"Successfully retrieved {snapshot}")
+                    contents.append(response.text)
+                else:
+                    print(f"Failed to retrieve {snapshot}")
+                    self.log_failed_request(snapshot, response.status_code)
+            except requests.RequestException as e:
+                print(f"Exception occurred while retrieving {snapshot}: {e}")
+                self.log_failed_request(snapshot, str(e))
+            sleep(self.delay)  # Add delay between requests
+        return contents
+
+    def log_failed_request(self, url, reason):
+        with open(self.failed_requests_log, 'a') as log_file:
+            log_file.write(f"Failed URL: {url}, Reason: {reason}\n")
+
+    def get_wayback_snapshots(self, url, start_date, end_date):
+        snapshots = []
+        api_url = f"http://web.archive.org/cdx/search/cdx?url={url}&from={start_date.strftime('%Y%m%d')}&to={end_date.strftime('%Y%m%d')}&output=json&fl=timestamp,original&collapse=digest"
+        response = requests.get(api_url)
         if response.status_code == 200:
-            print(f"Successfully retrieved {url}")
-            return response.text
-        else:
-            print(f"Failed to retrieve {url}")
-            return None
+            data = response.json()
+            for entry in data[1:]:
+                timestamp, original_url = entry
+                snapshot_url = f"http://web.archive.org/web/{timestamp}/{original_url}"
+                snapshots.append(snapshot_url)
+        return snapshots
 
     def scrape(self):
         for website in self.websites:
@@ -50,17 +86,20 @@ class WebScraper:
         if url in self.visited_urls:
             return
         self.visited_urls.add(url)
-        content = self.fetch_website_content(url)
-        if content:
-            self.analyze_content(root_url, content)
-            try:
-                soup = BeautifulSoup(content, 'html.parser')
-                for link in soup.find_all('a', href=True):
-                    next_url = urljoin(url, link['href'])
-                    if self.is_valid_url(next_url, url):
-                        self.scrape_website(next_url, root_url)
-            except Exception as e:
-                print(f"Error parsing {url}: {e}")
+        print(f"Scraping {url}")
+        contents = self.fetch_website_content(url)
+        for content in contents:
+            if content:
+                self.analyze_content(root_url, content)
+                try:
+                    soup = BeautifulSoup(content, 'html.parser')
+                    for link in soup.find_all('a', href=True):
+                        next_url = urljoin(url, link['href'])
+                        if self.is_valid_url(next_url, url):
+                            self.scrape_website(next_url, root_url)
+                            sleep(self.delay)  # Add delay between requests
+                except Exception as e:
+                    print(f"Error parsing {url}: {e}")
 
     def is_valid_url(self, url, base_url):
         parsed_url = urlparse(url)
@@ -111,7 +150,9 @@ class WebScraper:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Web Scraper for Company Website Analysis')
     parser.add_argument('num_sites', type=str, help='Number of sites to scrape or "all" to scrape all sites')
+    parser.add_argument('--num_years', type=int, default=1, help='Number of years for which data needs to be scraped')
+    parser.add_argument('--delay', type=int, default=1, help='Delay between requests in seconds')
     args = parser.parse_args()
 
-    scraper = WebScraper(num_sites=args.num_sites)
+    scraper = WebScraper(num_sites=args.num_sites, num_years=args.num_years, delay=args.delay)
     scraper.scrape()

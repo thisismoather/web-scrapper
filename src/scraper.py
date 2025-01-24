@@ -96,6 +96,8 @@ class WebScraper:
                     for link in soup.find_all('a', href=True):
                         next_url = urljoin(url, link['href'])
                         if self.is_valid_url(next_url, url):
+                            print(f"Found link: {next_url}")
+                            print(f"Root URL: {root_url}")
                             self.scrape_website(next_url, root_url)
                             sleep(self.delay)  # Add delay between requests
                 except Exception as e:

@@ -49,7 +49,7 @@ class WebScraper:
                 response = requests.get(snapshot, headers=headers, timeout=60)
                 if response.status_code == 200:
                     print(f"Successfully retrieved {snapshot}")
-                    contents.append(response.text)
+                    contents.append((snapshot, response.text))
                 else:
                     print(f"Failed to retrieve {snapshot}")
                     self.log_failed_request(snapshot, response.status_code)
@@ -88,9 +88,10 @@ class WebScraper:
         self.visited_urls.add(url)
         print(f"Scraping {url}")
         contents = self.fetch_website_content(url)
-        for content in contents:
+        for snapshot, content in contents:
             if content:
-                self.analyze_content(root_url, content)
+                year = snapshot.split('/')[4][:4]
+                self.analyze_content(root_url, content, year)
                 try:
                     soup = BeautifulSoup(content, 'html.parser')
                     for link in soup.find_all('a', href=True):
@@ -107,21 +108,23 @@ class WebScraper:
         parsed_url = urlparse(url)
         return parsed_url.scheme in ('http', 'https') and urlparse(base_url).netloc == parsed_url.netloc
 
-    def analyze_content(self, root_url, content):
+    def analyze_content(self, root_url, content, year):
         text = self.extract_text(content)
         country_counts, offshore_mentions, countries_found = self.analyzer.analyze(text)
         if root_url not in self.results:
-            self.results[root_url] = {
+            self.results[root_url] = {}
+        if year not in self.results[root_url]:
+            self.results[root_url][year] = {
                 "country_counts": {group: 0 for group in self.config['tax_groups']},
                 "offshore_mentions": {word: 0 for word in self.config['offshore_words']},
                 "countries_found": []
             }
         for group, count in country_counts.items():
-            self.results[root_url]["country_counts"][group] += count
+            self.results[root_url][year]["country_counts"][group] += count
         for word, count in offshore_mentions.items():
-            self.results[root_url]["offshore_mentions"][word] += count
-        self.results[root_url]["countries_found"].extend(countries_found)
-        self.results[root_url]["countries_found"] = list(set(self.results[root_url]["countries_found"]))
+            self.results[root_url][year]["offshore_mentions"][word] += count
+        self.results[root_url][year]["countries_found"].extend(countries_found)
+        self.results[root_url][year]["countries_found"] = list(set(self.results[root_url][year]["countries_found"]))
 
     def extract_text(self, html_content):
         try:
@@ -138,14 +141,16 @@ class WebScraper:
 
     def save_results_stata(self):
         data = []
-        for url, result in self.results.items():
-            row = {
-                "url": url,
-                **result["country_counts"],
-                **result["offshore_mentions"],
-                "countries_found": ", ".join(result["countries_found"])
-            }
-            data.append(row)
+        for url, yearly_results in self.results.items():
+            for year, result in yearly_results.items():
+                row = {
+                    "url": url,
+                    "year": year,
+                    **result["country_counts"],
+                    **result["offshore_mentions"],
+                    "countries_found": ", ".join(result["countries_found"])
+                }
+                data.append(row)
         df = pd.DataFrame(data)
         df.to_stata('results.dta', write_index=False)
 

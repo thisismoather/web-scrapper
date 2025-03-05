@@ -10,7 +10,7 @@ from time import sleep
 from analyzer import TextAnalyzer
 
 class WebScraper:
-    def __init__(self, config_path='config.yaml', websites_path='websites.dta', num_sites=None, num_years=1, delay=1):
+    def __init__(self, config_path='config.yaml', websites_path='websites.dta', num_sites=None, num_years=1, delay=1, frequency='Q'):
         with open(config_path, 'r') as file:
             self.config = yaml.safe_load(file)
         self.analyzer = TextAnalyzer(self.config)
@@ -19,6 +19,7 @@ class WebScraper:
         self.websites = self.load_websites(websites_path, num_sites)
         self.num_years = num_years
         self.delay = delay
+        self.frequency = frequency
         self.failed_requests_log = 'failed_requests.log'
 
     def load_websites(self, websites_path, num_sites):
@@ -69,9 +70,11 @@ class WebScraper:
         response = requests.get(api_url)
         if response.status_code == 200:
             data = response.json()
-            for entry in data[1:]:
-                timestamp, original_url = entry
-                snapshot_url = f"http://web.archive.org/web/{timestamp}/{original_url}"
+            df = pd.DataFrame(data[1:], columns=data[0])
+            df['datetime'] = pd.to_datetime(df['timestamp'], format='%Y%m%d%H%M%S')
+            df = df.set_index('datetime').resample(self.frequency)['timestamp'].first().dropna().reset_index()
+            for _, row in df.iterrows():
+                snapshot_url = f"http://web.archive.org/web/{row['timestamp']}/{url}"
                 snapshots.append(snapshot_url)
         return snapshots
 
@@ -159,7 +162,8 @@ if __name__ == "__main__":
     parser.add_argument('num_sites', type=str, help='Number of sites to scrape or "all" to scrape all sites')
     parser.add_argument('--num_years', type=int, default=1, help='Number of years for which data needs to be scraped')
     parser.add_argument('--delay', type=int, default=1, help='Delay between requests in seconds')
+    parser.add_argument('--frequency', type=str, default='Q', help='Frequency for snapshots (e.g., "Q" for quarterly)')
     args = parser.parse_args()
 
-    scraper = WebScraper(num_sites=args.num_sites, num_years=args.num_years, delay=args.delay)
+    scraper = WebScraper(num_sites=args.num_sites, num_years=args.num_years, delay=args.delay, frequency=args.frequency)
     scraper.scrape()
